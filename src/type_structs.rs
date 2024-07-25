@@ -5,25 +5,26 @@ pub(crate) static INFINITY: f64 = f64::MAX;
 
 /// # An RGB colour for use in the rendering engine
 /// Contains elements r, g, b each of type u8
+#[derive(Clone,Debug,Copy)]
 pub(crate) struct DiffuseColour {
-    r: u8,
-    g: u8,
-    b: u8,
+    pub(crate) r: f64,
+    pub(crate) g: f64,
+    pub(crate) b: f64,
 }
 /// A ray containing an origin and a direction in 3D space
 pub(crate) struct Ray {
-    origin: Vec3D,
-    direction: Vec3D
+    pub(crate) origin: Vec3D,
+    pub(crate) direction: Vec3D
 }
 /// Intersection container containing the distance to the intersection and a reference to the object implementing the SceneObject trait
-pub(crate) struct Intersection {
-    distance: f64,
-    object: Box<dyn SceneObject>
+pub(crate) struct Intersection<'a> {
+    pub(crate) distance: f64,
+    pub(crate) object: &'a Box<dyn SceneObject>
 }
 /// # The scene containing objects to be rendered
 /// Contains a Vec<dyn Box> in which the Box type is a generic type for all structs implementing SceneObject
 pub(crate) struct RenderScene {
-    objects_list: Vec<Box<dyn SceneObject>>
+    pub(crate) objects_list: Vec<Box<dyn SceneObject>>
 }
 
 ///# A 3-dimensional vector with custom-implemented behaviour
@@ -36,22 +37,22 @@ pub(crate) struct Vec3D {
 
 /// # A sphere for use in creating the 3-dimensional scene
 pub(crate) struct Sphere {
-    center: Vec3D,
-    radius: f64,
-    colour: DiffuseColour,
-    material_type: u8,
-    emission: f64,
-    refractive_index: f64,
+    pub(crate) center: Vec3D,
+    pub(crate) radius: f64,
+    pub(crate) colour: DiffuseColour,
+    pub(crate) material_type: u8,
+    pub(crate) emission: f64,
+    pub(crate) refractive_index: f64,
 }
 
 /// # A plane for use in creating the 3-dimensional scene
 pub(crate) struct Plane {
-    normal: Vec3D, // must be normalized using normalize_plane function
-    distance_to_origin: f64,
-    colour: DiffuseColour,
-    material_type: u8,
-    emission: f64,
-    refractive_index: f64,
+    pub(crate) normal: Vec3D, // must be normalized using normalize_plane function
+    pub(crate) distance_to_origin: f64,
+    pub(crate) colour: DiffuseColour,
+    pub(crate) material_type: u8,
+    pub(crate) emission: f64,
+    pub(crate) refractive_index: f64,
 }
 
 // ***shared traits
@@ -60,6 +61,10 @@ pub(crate) trait SceneObject {
     fn normal(&self, intersect_point: &Vec3D) -> Vec3D;
     /// Computes the intersection distance of the object with a given ray
     fn intersect(&self, intersect_ray: &Ray) -> f64;
+    fn colour(&self) -> DiffuseColour;
+    fn emission(&self) -> f64;
+    fn material_type(&self) -> u8;
+    fn refractive_index(&self) -> f64;
 }
 impl SceneObject for Sphere {
     fn normal(&self, intersect_point: &Vec3D) -> Vec3D {
@@ -85,11 +90,27 @@ impl SceneObject for Sphere {
         }
         return_type
     }
+
+    fn colour(&self) -> DiffuseColour {
+        self.colour.clone()
+    }
+
+    fn emission(&self) -> f64 {
+        self.emission
+    }
+
+    fn material_type(&self) -> u8 {
+        self.material_type
+    }
+
+    fn refractive_index(&self) -> f64 {
+        self.refractive_index
+    }
 }
 
 impl SceneObject for Plane {
     /// return reference to the normalized normal vector (Vec3D) of the plane
-    fn normal(&self, intersect_point: &Vec3D) -> Vec3D {
+    fn normal(&self, _intersect_point: &Vec3D) -> Vec3D {
         self.normal.clone()
     }
 
@@ -107,12 +128,71 @@ impl SceneObject for Plane {
             0.0
         }
     }
+
+    fn colour(&self) -> DiffuseColour {
+        self.colour.clone()
+    }
+
+    fn emission(&self) -> f64 {
+        self.emission
+    }
+
+    fn material_type(&self) -> u8 {
+        self.material_type
+    }
+
+    fn refractive_index(&self) -> f64 {
+        self.refractive_index
+    }
 }
 
 // ***implemented functions
 
 impl DiffuseColour {
-
+    /// addition to colour object with another directly
+    pub(crate) fn add(&mut self, colour: DiffuseColour) {
+        self.r = self.r + colour.r;
+        self.g = self.g + colour.g;
+        self.b = self.b + colour.b;
+    }
+    /// addition to colour object with another directly
+    pub(crate) fn add_return(&mut self, colour: DiffuseColour) -> DiffuseColour {
+        let result = DiffuseColour {
+            r: self.r + colour.r,
+            g: self.g + colour.g,
+            b: self.b + colour.b
+        };
+        result
+    }
+    /// multiplication to colour object with another directly
+    pub(crate) fn mult_colour(&mut self, colour: &DiffuseColour) {
+        self.r = self.r * colour.r;
+        self.g = self.g * colour.g;
+        self.b = self.b * colour.b;
+    }
+    /// multiplication to colour object with another
+    pub(crate) fn mult_colour_return(&mut self, colour: DiffuseColour) -> DiffuseColour {
+        let result = DiffuseColour {
+            r: self.r * colour.r,
+            g: self.g * colour.g,
+            b: self.b * colour.b
+        };
+        result
+    }
+    /// multiplication to colour object with f64 directly
+    pub(crate) fn mult(&mut self, scalar: f64) {
+        self.r = self.r as f64 * scalar;
+        self.g = self.g as f64 * scalar;
+        self.b = self.b as f64 * scalar;
+    }/// multiplication to colour object with f64
+    pub(crate) fn mult_return(&mut self, scalar: f64) -> DiffuseColour{
+        let result = DiffuseColour {
+            r: self.r as f64 * scalar,
+            g: self.g as f64 * scalar,
+            b: self.b as f64 * scalar
+        };
+        result
+    }
 }
 
 impl Vec3D {
@@ -223,13 +303,13 @@ impl Sphere {
 
 impl Plane {
     /// use this the safely create a plane
-    fn normalize_plane(plane: &mut Plane) {
-        plane.normal.norm();
+    pub(crate) fn normalize_plane(&mut self){
+        self.normal.norm();
     }
 }
 
 impl Ray {
-    fn set_direction(&mut self, direction: &Vec3D) {
+    pub(crate) fn set_direction(&mut self, direction: &Vec3D) {
         self.direction.x = direction.x;
         self.direction.x = direction.y;
         self.direction.x = direction.z;
@@ -239,14 +319,14 @@ impl Ray {
 
 impl RenderScene {
     /// Get the closest intersection, returns in an Option<> in case of no intersection
-    fn intersect(&mut self, ray: &Ray) -> Option<Intersection> {
-        let mut closest_intersection = -1;
-        let mut closest_distance = 0.0;
+    pub(crate) fn intersect(&self, ray: &Ray) -> Option<Intersection> {
+        let mut closest_intersection:i64 = -1;
+        let mut closest_distance = f64::MAX;
         for (i,obj) in &mut self.objects_list.iter().enumerate() {
             let intersect_temp = obj.intersect(ray);
             if intersect_temp > EPSILON {
                 if intersect_temp < closest_distance {
-                    closest_intersection = i;
+                    closest_intersection = i as i64;
                     closest_distance = intersect_temp;
                 }
             }
@@ -256,7 +336,7 @@ impl RenderScene {
         }
         return Some(Intersection {
             distance: closest_distance,
-            object: self.objects_list[closest_intersection].clone(),
+            object: &self.objects_list[closest_intersection as usize]
         });
     }
 }
