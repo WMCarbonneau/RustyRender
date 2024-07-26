@@ -38,7 +38,7 @@ fn hemisphere() -> Vec3D {
     return Vec3D {
         x: x_pos,
         y: y_pos,
-        z: f64::max(0.0,1.0-rand)
+        z: f64::max(0.0,1.0-rand).sqrt()
     }
 }
 
@@ -73,9 +73,9 @@ fn trace(ray: &mut Ray, render_scene: &RenderScene, recursion_depth: i32, colour
     ray.origin = hit_point.clone();
     // at this point we have detected the nearest object and can access its properties
     let mut emission_factor = DiffuseColour {
-        r: intersection_validated.object.colour().r as f64 /12.0*intersection_validated.object.emission(),
-        g: intersection_validated.object.colour().g as f64 /12.0*intersection_validated.object.emission(),
-        b: intersection_validated.object.colour().b as f64 /12.0*intersection_validated.object.emission(),
+        r: intersection_validated.object.colour().r /12.0*intersection_validated.object.emission(),
+        g: intersection_validated.object.colour().g /12.0*intersection_validated.object.emission(),
+        b: intersection_validated.object.colour().b /12.0*intersection_validated.object.emission(),
     };
     emission_factor.mult(roulette_factor);
     colour.add(emission_factor);
@@ -95,7 +95,7 @@ fn trace(ray: &mut Ray, render_scene: &RenderScene, recursion_depth: i32, colour
             z: Vec3D {x: rotation_x.z, y: rotation_y.z, z: normal.z}.dot(&sample_direction),
         };
 
-        ray.direction = rotated_direction;
+        ray.direction = rotated_direction.clone();
 
         let cosine_direction = ray.direction.dot(&normal);
 
@@ -103,19 +103,18 @@ fn trace(ray: &mut Ray, render_scene: &RenderScene, recursion_depth: i32, colour
 
         trace(ray, render_scene, recursion_depth+1, &mut temp_colour);
 
-        // todo might have some ownership issues here
         colour.add(temp_colour.mult_colour_return(intersection_validated.object.colour()).mult_return(cosine_direction*0.1*roulette_factor));
         // println!("r:{},g:{},b:{}", colour.r, colour.g,colour.b)
     }else if intersection_validated.object.material_type() == 2 { // specular material
         let cosine_direction = ray.direction.dot(&normal);
-        ray.set_direction(&ray.direction.subtract(&normal.scalar_mult(cosine_direction*2.0)));
+        let subtracted = ray.direction.subtract(&normal.scalar_mult(cosine_direction*2.0));
+        ray.set_direction(&subtracted);
         ray.direction.norm();
+        let mut temp_colour_2 = DiffuseColour {r: 0.0,g: 0.0, b: 0.0};
 
-        let mut temp_colour = DiffuseColour {r: 0.0,g: 0.0, b: 0.0};
+        trace(ray, render_scene, recursion_depth+1, &mut temp_colour_2);
 
-        trace(ray, render_scene, recursion_depth+1, &mut temp_colour);
-
-        colour.add(temp_colour.mult_return(roulette_factor));
+        colour.add(temp_colour_2.mult_return(roulette_factor));
         // println!("r:{},g:{},b:{}", colour.r, colour.g,colour.b)
 
     }else if intersection_validated.object.material_type() == 3 { // refractive material
@@ -125,9 +124,9 @@ fn trace(ray: &mut Ray, render_scene: &RenderScene, recursion_depth: i32, colour
         // if inside the medium
         if normal.dot(&ray.direction) > 0.0 {
             normal = normal.scalar_mult(-1.0);
-        }else {
             r_index = 1.0/r_index;
         }
+        r_index = 1.0/r_index;
 
         let cosine_direction_1 = -1.0 * normal.dot(&ray.direction);
         let cosine_direction_2 = 1.0 - (r_index*r_index*(1.0-(cosine_direction_1*cosine_direction_1)));
@@ -142,11 +141,11 @@ fn trace(ray: &mut Ray, render_scene: &RenderScene, recursion_depth: i32, colour
             ray.direction.norm();
         }
 
-        let mut temp_colour = DiffuseColour {r: 0.0,g: 0.0, b: 0.0};
+        let mut temp_colour_3 = DiffuseColour {r: 0.0,g: 0.0, b: 0.0};
 
-        trace(ray, render_scene, recursion_depth+1, &mut temp_colour);
+        trace(ray, render_scene, recursion_depth+1, &mut temp_colour_3);
 
-        colour.add(temp_colour.mult_return(1.15*roulette_factor));
+        colour.add(temp_colour_3.mult_return(1.15*roulette_factor));
         // println!("r:{},g:{},b:{}", colour.r, colour.g,colour.b)
 
     }
@@ -161,18 +160,19 @@ pub(crate) fn simulate_per_pixel(column: i32, row: i32, render_scene: &RenderSce
         // randomized anti-aliasing
         camera.x = camera.x + rand::thread_rng().gen_range(-1.0, 1.0)/700.0;
         camera.y = camera.y + rand::thread_rng().gen_range(-1.0, 1.0)/700.0;
-
+        let origin = Vec3D {x:0.0,y:0.0,z:0.0};
+        camera = camera.subtract(&origin);
         camera.norm();
 
         let mut ray = Ray {
-            origin: Vec3D {x:0.0,y:0.0,z:0.0},
+            origin,
             direction: camera.clone()
         };
         trace(&mut ray, render_scene, 0, &mut colour_master);
 
         // if colour_master.r != 0.0 || colour_master.g != 0.0 || colour_master.b != 0.0 {
         //     println!("r:{},g:{},b:{}", colour_master.r, colour_master.g, colour_master.b); // todo no colour out of trace
-        // } 
+        // }
 
         // set the pixel
         image_pixels[(row+column*WIDTH) as usize] = image_pixels[(row+column*WIDTH) as usize].add_return(colour_master.mult_return(1.0/samples as f64));

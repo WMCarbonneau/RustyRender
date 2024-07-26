@@ -181,15 +181,15 @@ impl DiffuseColour {
     }
     /// multiplication to colour object with f64 directly
     pub(crate) fn mult(&mut self, scalar: f64) {
-        self.r = self.r as f64 * scalar;
-        self.g = self.g as f64 * scalar;
-        self.b = self.b as f64 * scalar;
+        self.r = self.r * scalar;
+        self.g = self.g * scalar;
+        self.b = self.b * scalar;
     }/// multiplication to colour object with f64
     pub(crate) fn mult_return(&mut self, scalar: f64) -> DiffuseColour{
         let result = DiffuseColour {
-            r: self.r as f64 * scalar,
-            g: self.g as f64 * scalar,
-            b: self.b as f64 * scalar
+            r: self.r * scalar,
+            g: self.g * scalar,
+            b: self.b * scalar,
         };
         result
     }
@@ -321,7 +321,7 @@ impl RenderScene {
     /// Get the closest intersection, returns in an Option<> in case of no intersection
     pub(crate) fn intersect(&self, ray: &Ray) -> Option<Intersection> {
         let mut closest_intersection:i64 = -1;
-        let mut closest_distance = f64::MAX;
+        let mut closest_distance = INFINITY;
         for (i,obj) in &mut self.objects_list.iter().enumerate() {
             let intersect_temp = obj.intersect(ray);
             if intersect_temp > EPSILON {
@@ -340,8 +340,6 @@ impl RenderScene {
         });
     }
 }
-
-// todo redo tests- changed mutability of Vec3D operations
 
 #[cfg(test)]
 mod tests {
@@ -428,10 +426,10 @@ mod tests {
             z: 4.0,
         };
 
-        test_vec.scalar_mult(4.0);
-        assert_eq!(test_vec.x, 20.0);
-        assert_eq!(test_vec.y, 12.0);
-        assert_eq!(test_vec.z, 16.0);
+        let result = test_vec.scalar_mult(4.0);
+        assert_eq!(result.x, 20.0);
+        assert_eq!(result.y, 12.0);
+        assert_eq!(result.z, 16.0);
     }
 
     #[test]
@@ -442,10 +440,10 @@ mod tests {
             z: 4.0,
         };
 
-        test_vec.scalar_div(2.0);
-        assert_eq!(test_vec.x, 2.5);
-        assert_eq!(test_vec.y, 3.0);
-        assert_eq!(test_vec.z, 2.0);
+        let result = test_vec.scalar_div(2.0);
+        assert_eq!(result.x, 2.5);
+        assert_eq!(result.y, 3.0);
+        assert_eq!(result.z, 2.0);
     }
 
     #[test]
@@ -515,6 +513,11 @@ mod tests {
         assert_eq!(test_vec4.x, component);
         assert_eq!(test_vec4.y, component);
         assert_eq!(test_vec4.z, component);
+
+        assert_eq!(test_vec2.length(), 1.0);
+        assert_eq!(test_vec3.length(), 1.0);
+        assert_eq!(test_vec4.length(), 1.0);
+        assert_eq!(test_vec5.length(), 1.0);
     }
 
     #[test]
